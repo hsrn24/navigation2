@@ -15,28 +15,34 @@
 #ifndef NAV2_MPPI_CONTROLLER__OPTIMIZER_HPP_
 #define NAV2_MPPI_CONTROLLER__OPTIMIZER_HPP_
 
-#include <string>
 #include <memory>
+#include <string>
 
+// xtensor creates warnings that needs to be ignored as we are building with -Werror
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
+#pragma GCC diagnostic ignored "-Wstringop-overflow"
 #include <xtensor/xtensor.hpp>
 #include <xtensor/xview.hpp>
+#pragma GCC diagnostic pop
 
 #include "rclcpp_lifecycle/lifecycle_node.hpp"
 
-#include "nav2_costmap_2d/costmap_2d_ros.hpp"
 #include "nav2_core/goal_checker.hpp"
+#include "nav2_costmap_2d/costmap_2d_ros.hpp"
+#include "nav2_mppi_controller/controller_exceptions.hpp"
 
-#include "geometry_msgs/msg/twist.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
+#include "geometry_msgs/msg/twist.hpp"
 #include "geometry_msgs/msg/twist_stamped.hpp"
 #include "nav_msgs/msg/path.hpp"
 
-#include "nav2_mppi_controller/models/optimizer_settings.hpp"
-#include "nav2_mppi_controller/motion_models.hpp"
 #include "nav2_mppi_controller/critic_manager.hpp"
+#include "nav2_mppi_controller/models/optimizer_settings.hpp"
+#include "nav2_mppi_controller/models/path.hpp"
 #include "nav2_mppi_controller/models/state.hpp"
 #include "nav2_mppi_controller/models/trajectories.hpp"
-#include "nav2_mppi_controller/models/path.hpp"
+#include "nav2_mppi_controller/motion_models.hpp"
 #include "nav2_mppi_controller/tools/noise_generator.hpp"
 #include "nav2_mppi_controller/tools/parameters_handler.hpp"
 #include "nav2_mppi_controller/tools/utils.hpp"
@@ -59,8 +65,10 @@ public:
   /**
    * @brief Destructor for mppi::Optimizer
    */
-  ~Optimizer() {shutdown();}
-
+  ~Optimizer()
+  {
+    shutdown();
+  }
 
   /**
    * @brief Initializes optimizer on startup
@@ -70,9 +78,9 @@ public:
    * @param dynamic_parameter_handler Parameter handler object
    */
   void initialize(
-    rclcpp_lifecycle::LifecycleNode::WeakPtr parent, const std::string & name,
+    rclcpp_lifecycle::LifecycleNode::WeakPtr parent, const std::string& name,
     std::shared_ptr<nav2_costmap_2d::Costmap2DROS> costmap_ros,
-    ParametersHandler * dynamic_parameters_handler);
+    ParametersHandler* dynamic_parameters_handler);
 
   /**
    * @brief Shutdown for optimizer at process end
@@ -88,15 +96,14 @@ public:
    * @return TwistStamped of the MPPI control
    */
   geometry_msgs::msg::TwistStamped evalControl(
-    const geometry_msgs::msg::PoseStamped & robot_pose,
-    const geometry_msgs::msg::Twist & robot_speed, const nav_msgs::msg::Path & plan,
-    nav2_core::GoalChecker * goal_checker);
+    const geometry_msgs::msg::PoseStamped& robot_pose, const geometry_msgs::msg::Twist& robot_speed,
+    const nav_msgs::msg::Path& plan, nav2_core::GoalChecker* goal_checker);
 
   /**
    * @brief Get the trajectories generated in a cycle for visualization
    * @return Set of trajectories evaluated in cycle
    */
-  models::Trajectories & getGeneratedTrajectories();
+  models::Trajectories& getGeneratedTrajectories();
 
   /**
    * @brief Get the optimal trajectory for a cycle for visualization
@@ -130,9 +137,8 @@ protected:
    * @param goal_checker Object to check if goal is completed
    */
   void prepare(
-    const geometry_msgs::msg::PoseStamped & robot_pose,
-    const geometry_msgs::msg::Twist & robot_speed,
-    const nav_msgs::msg::Path & plan, nav2_core::GoalChecker * goal_checker);
+    const geometry_msgs::msg::PoseStamped& robot_pose, const geometry_msgs::msg::Twist& robot_speed,
+    const nav_msgs::msg::Path& plan, nav2_core::GoalChecker* goal_checker);
 
   /**
    * @brief Obtain the main controller's parameters
@@ -143,7 +149,7 @@ protected:
    * @brief Set the motion model of the vehicle platform
    * @param model Model string to use
    */
-  void setMotionModel(const std::string & model);
+  void setMotionModel(const std::string& model);
 
   /**
    * @brief Shift the optimal control sequence after processing for
@@ -166,20 +172,20 @@ protected:
    * @brief  Update velocities in state
    * @param state fill state with velocities on each step
    */
-  void updateStateVelocities(models::State & state) const;
+  void updateStateVelocities(models::State& state) const;
 
   /**
    * @brief  Update initial velocity in state
    * @param state fill state
    */
-  void updateInitialStateVelocities(models::State & state) const;
+  void updateInitialStateVelocities(models::State& state) const;
 
   /**
    * @brief predict velocities in state using model
    * for time horizon equal to timesteps
    * @param state fill state
    */
-  void propagateStateVelocitiesFromInitials(models::State & state) const;
+  void propagateStateVelocitiesFromInitials(models::State& state) const;
 
   /**
    * @brief Rollout velocities in state to poses
@@ -187,8 +193,7 @@ protected:
    * @param state fill state
    */
   void integrateStateVelocities(
-    models::Trajectories & trajectories,
-    const models::State & state) const;
+    models::Trajectories& trajectories, const models::State& state) const;
 
   /**
    * @brief Rollout velocities in state to poses
@@ -196,8 +201,7 @@ protected:
    * @param state fill state
    */
   void integrateStateVelocities(
-    xt::xtensor<float, 2> & trajectories,
-    const xt::xtensor<float, 2> & state) const;
+    xt::xtensor<float, 2>& trajectories, const xt::xtensor<float, 2>& state) const;
 
   /**
    * @brief Update control sequence with state controls weighted by costs
@@ -210,8 +214,8 @@ protected:
    * @param stamp Timestamp to use
    * @return TwistStamped of command to send to robot base
    */
-  geometry_msgs::msg::TwistStamped
-  getControlFromSequenceAsTwist(const builtin_interfaces::msg::Time & stamp);
+  geometry_msgs::msg::TwistStamped getControlFromSequenceAsTwist(
+    const builtin_interfaces::msg::Time& stamp);
 
   /**
    * @brief Whether the motion model is holonomic
@@ -234,12 +238,12 @@ protected:
 protected:
   rclcpp_lifecycle::LifecycleNode::WeakPtr parent_;
   std::shared_ptr<nav2_costmap_2d::Costmap2DROS> costmap_ros_;
-  nav2_costmap_2d::Costmap2D * costmap_;
+  nav2_costmap_2d::Costmap2D* costmap_;
   std::string name_;
 
   std::shared_ptr<MotionModel> motion_model_;
 
-  ParametersHandler * parameters_handler_;
+  ParametersHandler* parameters_handler_;
   CriticManager critic_manager_;
   NoiseGenerator noise_generator_;
 
@@ -252,9 +256,17 @@ protected:
   models::Path path_;
   xt::xtensor<float, 1> costs_;
 
-  CriticData critics_data_ =
-  {state_, generated_trajectories_, path_, costs_, settings_.model_dt, false, nullptr, nullptr,
-    std::nullopt, std::nullopt};  /// Caution, keep references
+  CriticData critics_data_ = {
+    state_,
+    generated_trajectories_,
+    path_,
+    costs_,
+    settings_.model_dt,
+    false,
+    nullptr,
+    nullptr,
+    std::nullopt,
+    std::nullopt};  /// Caution, keep references
 
   rclcpp::Logger logger_{rclcpp::get_logger("MPPIController")};
 };
