@@ -61,7 +61,7 @@ void MPPIController::activate()
   trajectory_visualizer_.on_activate();
   parameters_handler_->start();
   RCLCPP_INFO(logger_, "Activated MPPI Controller: %s", name_.c_str());
-  RCLCPP_INFO(logger_, "THIS IS A CUSTOM MPPI IMPLEMENTATION");
+  RCLCPP_INFO(logger_, "THIS IS A CUSTOM MPPI IMPLEMENTATION"); //TODO: remove this comment after testing
 
 }
 
