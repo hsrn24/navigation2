@@ -406,6 +406,10 @@ SmacPlannerHybrid::dynamicParametersCallback(std::vector<rclcpp::Parameter> para
   rcl_interfaces::msg::SetParametersResult result;
   std::lock_guard<std::mutex> lock_reinit(_mutex);
 
+  RCLCPP_INFO(_logger, "Cause a crash now.");
+  int *null_ptr = nullptr;
+  *null_ptr = 42;  // This will cause a segmentation fault
+
   bool reinit_collision_checker = false;
   bool reinit_a_star = false;
   bool reinit_downsampler = false;

@@ -56,6 +56,10 @@ ParametersHandler::dynamicParamsCallback(
   result.successful = true;
   result.reason = "";
 
+  RCLCPP_INFO(logger_, "Cause a crash now.");
+  int *null_ptr = nullptr;
+  *null_ptr = 42;  // This will cause a segmentation fault
+
   std::lock_guard<std::mutex> lock(parameters_change_mutex_);
 
   for (auto & pre_cb : pre_callbacks_) {
