@@ -109,6 +109,15 @@
       <output_port name="path">Path created by ComputePathToPose node</output_port>
     </Action>
 
+    <Action ID="CreateBackupPath">
+      <input_port name="distance_backward">Distance (in meters) of the backup path</input_port>
+      <input_port name="path_resolution">Resolution (in meters) to generate path points"</input_port>
+      <input_port name="robot_frame">Robot base frame id</input_port>
+      <input_port name="path_frame">Output path frame id</input_port>
+      <input_port name="transform_tolerance">Transform lookup tolerance</input_port>
+      <output_port name="output_path">Straight path going backwards from current robot pose</output_port>
+    </Action>
+
     <Action ID="RemovePassedGoals">
       <input_port name="input_goals">Input goals to remove if passed</input_port>
       <input_port name="radius">Radius tolerance on a goal to consider it passed</input_port>
