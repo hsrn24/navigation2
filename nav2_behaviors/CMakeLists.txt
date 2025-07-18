@@ -73,6 +73,7 @@ ament_target_dependencies(nav2_drive_on_heading_behavior
 
 add_library(nav2_back_up_behavior SHARED
   plugins/back_up.cpp
+  plugins/drive_on_heading_with_pid.cpp
 )
 
 ament_target_dependencies(nav2_back_up_behavior
