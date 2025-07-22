@@ -187,6 +187,7 @@ protected:
 
   // Our action server implements the ComputePathToPose action
   std::unique_ptr<ActionServerToPose> action_server_pose_;
+  std::unique_ptr<ActionServerToPose> action_server_pose2_;
   std::unique_ptr<ActionServerThroughPoses> action_server_poses_;
 
   /**
@@ -194,6 +195,13 @@ protected:
    * ComputePathToPose
    */
   void computePlan();
+
+  /**
+   * @brief The action server callback which calls planner to get the path
+   * ComputePathToPose
+   */
+  void computePlan2();
+  
 
   /**
    * @brief The action server callback which calls planner to get the path

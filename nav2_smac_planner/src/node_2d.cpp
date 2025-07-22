@@ -22,8 +22,8 @@ namespace nav2_smac_planner
 {
 
 // defining static member for all instance to share
-std::vector<int> Node2D::_neighbors_grid_offsets;
-float Node2D::cost_travel_multiplier = 2.0;
+thread_local std::vector<int> Node2D::_neighbors_grid_offsets;
+thread_local float Node2D::cost_travel_multiplier = 2.0;
 
 Node2D::Node2D(const uint64_t index)
 : parent(nullptr),

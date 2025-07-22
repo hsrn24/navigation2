@@ -87,7 +87,7 @@ inline std::ostream& operator<<(std::ostream& os, Counts const& c) {
 }
 
 static Counts& counts() {
-    static Counts counts{};
+    thread_local Counts counts{};
     return counts;
 }
 }  // namespace robin_hood

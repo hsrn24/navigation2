@@ -35,9 +35,9 @@ namespace nav2_smac_planner
 {
 
 // defining static member for all instance to share
-LatticeMotionTable NodeLattice::motion_table;
-float NodeLattice::size_lookup = 25;
-LookupTable NodeLattice::dist_heuristic_lookup_table;
+thread_local LatticeMotionTable NodeLattice::motion_table;
+thread_local float NodeLattice::size_lookup = 25;
+thread_local LookupTable NodeLattice::dist_heuristic_lookup_table;
 
 // Each of these tables are the projected motion models through
 // time and space applied to the search on the current node in
@@ -429,7 +429,7 @@ float NodeLattice::getDistanceHeuristic(
       theta_pos;
     motion_heuristic = dist_heuristic_lookup_table[index];
   } else if (obstacle_heuristic == 0.0) {
-    static ompl::base::ScopedState<> from(motion_table.state_space), to(motion_table.state_space);
+    thread_local ompl::base::ScopedState<> from(motion_table.state_space), to(motion_table.state_space);
     to[0] = goal_coords.x;
     to[1] = goal_coords.y;
     to[2] = motion_table.getAngleFromBin(goal_coords.theta);

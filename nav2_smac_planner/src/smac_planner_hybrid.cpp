@@ -254,7 +254,6 @@ void SmacPlannerHybrid::configure(
       _lookup_table_dim);
     _lookup_table_dim += 1.0;
   }
-
   // Initialize collision checker
   _collision_checker = GridCollisionChecker(_costmap_ros, _angle_quantizations, node);
   _collision_checker.setFootprint(
@@ -390,12 +389,20 @@ nav_msgs::msg::Path SmacPlannerHybrid::createPlan(
 
   std::unique_lock<nav2_costmap_2d::Costmap2D::mutex_t> lock(*(_costmap->getMutex()));
 
-  // Downsample costmap, if required
-  nav2_costmap_2d::Costmap2D * costmap = _costmap;
+
+  // Create a local copy of the costmap object
+  nav2_costmap_2d::Costmap2D local_costmap_copy(*_costmap);
+  // Now use a pointer to point to the newly created copy
+  nav2_costmap_2d::Costmap2D * costmap = &local_costmap_copy;
+
+  nav2_costmap_2d::Footprint footprint = _costmap_ros->getRobotFootprint();
+
   if (_costmap_downsampler) {
     costmap = _costmap_downsampler->downsample(_downsampling_factor);
     _collision_checker.setCostmap(costmap);
   }
+
+  _collision_checker.setCostmap(costmap);
 
   // Set collision checker and costmap information
   _collision_checker.setFootprint(
@@ -416,6 +423,9 @@ nav_msgs::msg::Path SmacPlannerHybrid::createPlan(
             "Start Coordinates of(" + std::to_string(start.pose.position.x) + ", " +
             std::to_string(start.pose.position.y) + ") was outside bounds");
   }
+
+  // Previously locked here
+  // lock.unlock();
 
   double orientation_bin = std::round(tf2::getYaw(start.pose.orientation) / _angle_bin_size);
   while (orientation_bin < 0.0) {
@@ -446,8 +456,14 @@ nav_msgs::msg::Path SmacPlannerHybrid::createPlan(
   if (orientation_bin >= static_cast<float>(_angle_quantizations)) {
     orientation_bin -= static_cast<float>(_angle_quantizations);
   }
+
+  /// POSSIBLE issue here
   _a_star->setGoal(mx_goal, my_goal, static_cast<unsigned int>(orientation_bin),
     _goal_heading_mode, _coarse_search_resolution);
+
+  // Unlock here as setGoal uses he costmap_ros under the hood
+  lock.unlock();
+
 
   // Setup message
   nav_msgs::msg::Path plan;
@@ -556,7 +572,7 @@ nav_msgs::msg::Path SmacPlannerHybrid::createPlan(
       marker_array = std::make_unique<visualization_msgs::msg::MarkerArray>();
       for (size_t i = 0; i < plan.poses.size(); i++) {
         const std::vector<geometry_msgs::msg::Point> edge =
-          transformFootprintToEdges(plan.poses[i].pose, _costmap_ros->getRobotFootprint());
+          transformFootprintToEdges(plan.poses[i].pose, footprint);
         marker_array->markers.push_back(createMarker(edge, i, _global_frame, now));
       }
       _planned_footprints_publisher->publish(std::move(marker_array));
