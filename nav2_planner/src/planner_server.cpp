@@ -371,7 +371,7 @@ bool PlannerServer::validatePath(
 void
 PlannerServer::computePlanThroughPoses()
 {
-  std::lock_guard<std::mutex> lock(dynamic_params_lock_);
+  std::shared_lock<std::shared_mutex> lock(dynamic_params_lock_);
 
   auto start_time = this->now();
 
@@ -463,7 +463,7 @@ PlannerServer::computePlanThroughPoses()
 void
 PlannerServer::computePlan()
 {
-  // std::lock_guard<std::mutex> lock(dynamic_params_lock_);
+  std::shared_lock<std::shared_mutex>  lock(dynamic_params_lock_);
 
   auto start_time = this->now();
 
@@ -523,7 +523,7 @@ PlannerServer::computePlan()
 void
 PlannerServer::computePlan2()
 {
-  // std::lock_guard<std::mutex> lock(dynamic_params_lock_);
+  std::shared_lock<std::shared_mutex>  lock(dynamic_params_lock_);
 
   auto start_time = this->now();
 
@@ -677,7 +677,7 @@ void PlannerServer::isPathValid(
 rcl_interfaces::msg::SetParametersResult
 PlannerServer::dynamicParametersCallback(std::vector<rclcpp::Parameter> parameters)
 {
-  std::lock_guard<std::mutex> lock(dynamic_params_lock_);
+  std::unique_lock<std::shared_mutex> lock(dynamic_params_lock_);
   rcl_interfaces::msg::SetParametersResult result;
 
   for (auto parameter : parameters) {
