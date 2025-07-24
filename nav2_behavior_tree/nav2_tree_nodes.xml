@@ -21,7 +21,7 @@
       <input_port name="time_allowance">Allowed time for reversing</input_port>
       <input_port name="server_name">Server name</input_port>
       <input_port name="server_timeout">Server timeout</input_port>
-      <input_port name="truncated_path">PAth</input_port>
+      <input_port name="truncated_path">Path</input_port>
     </Action>
 
     <Action ID="DriveOnHeading">
