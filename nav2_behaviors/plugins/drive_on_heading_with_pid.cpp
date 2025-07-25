@@ -40,24 +40,25 @@ Status DriveOnHeadingWithPid<ActionT>::onRun(const std::shared_ptr<const typenam
 }
 
 template<typename ActionT>
-Status DriveOnHeadingWithPid<ActionT>::onCycleUpdate()
-{
+Status DriveOnHeadingWithPid<ActionT>::onCycleUpdate() {
   rclcpp::Duration time_remaining = end_time_ - this->clock_->now();
+  
   if (time_remaining.seconds() < 0.0 && command_time_allowance_.seconds() > 0.0) {
-      this->stopRobot();
-      RCLCPP_WARN(
+    this->stopRobot();
+    RCLCPP_WARN(
       this->logger_,
       "Exceeded time allowance before reaching the DriveOnHeadingWithPid goal - Exiting DriveOnHeadingWithPid");
-      return Status::FAILED;
+    return Status::FAILED;
   }
 
   geometry_msgs::msg::PoseStamped current_pose;
+
   if (!nav2_util::getCurrentPose(
-      current_pose, *this->tf_, this->global_frame_, this->robot_base_frame_,
-      this->transform_tolerance_))
+    current_pose, *this->tf_, this->global_frame_, this->robot_base_frame_,
+    this->transform_tolerance_))
   {
-      RCLCPP_ERROR(this->logger_, "Current robot pose is not available.");
-      return Status::FAILED;
+    RCLCPP_ERROR(this->logger_, "Current robot pose is not available.");
+    return Status::FAILED;
   }
 
   double diff_x = initial_pose_.pose.position.x - current_pose.pose.position.x;
@@ -68,8 +69,8 @@ Status DriveOnHeadingWithPid<ActionT>::onCycleUpdate()
   this->action_server_->publish_feedback(feedback_);
 
   if (distance >= std::fabs(command_x_)) {
-      this->stopRobot();
-      return Status::SUCCEEDED;
+    this->stopRobot();
+    return Status::SUCCEEDED;
   }
 
   auto cmd_vel = std::make_unique<geometry_msgs::msg::Twist>();
@@ -82,10 +83,38 @@ Status DriveOnHeadingWithPid<ActionT>::onCycleUpdate()
   pose2d.y = current_pose.pose.position.y;
   pose2d.theta = tf2::getYaw(current_pose.pose.orientation);
 
+  if (pid_enabled_) {
+    rclcpp::Time time_now = this->clock_->now();
+    double angular_z_now;
+
+    try {
+      angular_z_now = angular_velocity_extrapolator_->getValueAtTime(time_now);
+    } catch(const std::exception& e) {
+      RCLCPP_ERROR_STREAM(this->logger_, "Failed to extrapolate angular velocity into the future: " 
+      << e.what() << " Skipping PID control");
+      this->vel_pub_->publish(std::move(cmd_vel));
+      return Status::RUNNING;
+    }
+
+    if (time_prev_.seconds() != 0.0) {
+      double dt = (time_now - time_prev_).seconds();
+      // Reset PID state if there was a break
+      if (dt > 0.2) { // HARDCODED FOR NOW
+        angular_velocity_pid_->reset();
+        dt = 0;
+      }
+
+      double ez = cmd_vel->angular.z - angular_z_now;
+      cmd_vel->angular.z =  cmd_vel->angular.z + angular_velocity_pid_->update(ez, dt);
+    }
+
+    time_prev_ = time_now;
+  }
+  
   if (!isCollisionFree(distance, cmd_vel.get(), pose2d)) {
-      this->stopRobot();
-      RCLCPP_WARN(this->logger_, "Collision Ahead - Exiting DriveOnHeadingWithPid");
-      return Status::FAILED;
+    this->stopRobot();
+    RCLCPP_WARN(this->logger_, "Collision Ahead - Exiting DriveOnHeadingWithPid");
+    return Status::FAILED;
   }
 
   this->vel_pub_->publish(std::move(cmd_vel));
@@ -142,48 +171,42 @@ void DriveOnHeadingWithPid<ActionT>::onConfigure()
   pid_enabled_ = node->get_parameter("pid_control.enable").as_bool();
   nav2_util::declare_parameter_if_not_declared(
     node, "pid_control.kp", rclcpp::ParameterValue(0.0));
-  pid_angular_velocity_->setKp(node->get_parameter("pid_control.kp").as_double());
+  angular_velocity_pid_->setKp(node->get_parameter("pid_control.kp").as_double());
   nav2_util::declare_parameter_if_not_declared(
     node, "pid_control.ki", rclcpp::ParameterValue(0.0));
-  pid_angular_velocity_->setKi(node->get_parameter("pid_control.ki").as_double());
+  angular_velocity_pid_->setKi(node->get_parameter("pid_control.ki").as_double());
   nav2_util::declare_parameter_if_not_declared(
     node, "pid_control.kd", rclcpp::ParameterValue(0.0));
-  pid_angular_velocity_->setKd(node->get_parameter("pid_control.kd").as_double());
+  angular_velocity_pid_->setKd(node->get_parameter("pid_control.kd").as_double());
   nav2_util::declare_parameter_if_not_declared(
     node, "pid_control.integral_limit", rclcpp::ParameterValue(0.0));
-  pid_angular_velocity_->setIntegralLimit(node->get_parameter("pid_control.integral_limit").as_double());
+  angular_velocity_pid_->setIntegralLimit(node->get_parameter("pid_control.integral_limit").as_double());
   nav2_util::declare_parameter_if_not_declared(
     node, "pid_control.output_limit", rclcpp::ParameterValue(0.0));
-  pid_angular_velocity_->setOutputLimit(node->get_parameter("pid_control.output_limit").as_double());
+  angular_velocity_pid_->setOutputLimit(node->get_parameter("pid_control.output_limit").as_double());
 
   dyn_params_handler_ = node->add_on_set_parameters_callback(
     std::bind(&DriveOnHeadingWithPid<ActionT>::dynamicParametersCallback, this, std::placeholders::_1));
 
-  cmd_vel_sub_ = node->template create_subscription<geometry_msgs::msg::Twist>(
-    "/robo_cart/cmd_vel_in", rclcpp::SystemDefaultsQoS(),
-    std::bind(&DriveOnHeadingWithPid<ActionT>::cmdVelCb, this, std::placeholders::_1));
-
   odom_filtered_sub_ = node->template create_subscription<nav_msgs::msg::Odometry>(
     "/robo_cart/odometry/filtered", rclcpp::SystemDefaultsQoS(),
     [this](const nav_msgs::msg::Odometry::SharedPtr msg) {
-      interpolate_angular_z_->update(msg->twist.twist.angular.z, msg->header.stamp);
-      int_odom_msg_ = *msg;
+      angular_velocity_extrapolator_->update(msg->twist.twist.angular.z, msg->header.stamp);
+      extrapolated_odom_msg_ = *msg;
     });
   
-  cmd_vel_pub_ = node->template create_publisher<geometry_msgs::msg::Twist>("/robo_cart/cmd_vel_out", rclcpp::SystemDefaultsQoS());
 #if DEBUG_MESSAGES
-  odom_int_pub_ = node->template create_publisher<nav_msgs::msg::Odometry>("/robo_cart/odometry/interpolated", rclcpp::SystemDefaultsQoS());
+  extrapolated_odom_pub_ = node->template create_publisher<nav_msgs::msg::Odometry>("/robo_cart/odometry/extrapolated", rclcpp::SystemDefaultsQoS());
   pid_state_pub_ = node->template create_publisher<geometry_msgs::msg::Twist>("/robo_cart/pid_state", rclcpp::SystemDefaultsQoS());
 #endif
 
   RCLCPP_INFO(this->logger_, "PID Controller: Activating");
-  cmd_vel_pub_->on_activate();
 #if DEBUG_MESSAGES
-  odom_int_pub_->on_activate();
+  extrapolated_odom_pub_->on_activate();
   pid_state_pub_->on_activate();
 #endif
-  pid_angular_velocity_->reset();
-  interpolate_angular_z_->reset();
+  angular_velocity_pid_->reset();
+  angular_velocity_extrapolator_->reset();
   
   node_active_ = true;
 }
@@ -192,59 +215,17 @@ template<typename ActionT>
 void DriveOnHeadingWithPid<ActionT>::onCleanup()
 {
   RCLCPP_INFO(this->logger_, "PID Controller: Deactivating");
-  cmd_vel_pub_->on_deactivate();
 #if DEBUG_MESSAGES
-  odom_int_pub_->on_deactivate();
+  extrapolated_odom_pub_->on_deactivate();
   pid_state_pub_->on_deactivate();
 #endif
   dyn_params_handler_.reset();
 
   RCLCPP_INFO(this->logger_, "PID Controller: Cleaning up");
-  cmd_vel_sub_.reset();
   odom_filtered_sub_.reset();
-  cmd_vel_pub_.reset();
 #if DEBUG_MESSAGES
-  odom_int_pub_.reset();
+  extrapolated_odom_pub_.reset();
   pid_state_pub_.reset();
-#endif
-}
-
-template<typename ActionT>
-void DriveOnHeadingWithPid<ActionT>::cmdVelCb(const geometry_msgs::msg::Twist::UniquePtr msg)
-{
-  constexpr double expected_cmd_frequency = 10.0;
-
-  if (!node_active_) {
-      return;
-  }
-
-  geometry_msgs::msg::Twist cmd_vel_out = *msg;
-  rclcpp::Time time_now = this->clock_->now();
-  double angular_z_now = interpolate_angular_z_->getValueAtTime(time_now);
-
-  if (pid_enabled_ & (time_prev_.seconds() != 0.0)) {
-    double dt = (time_now - time_prev_).seconds();
-    // Reset PID state if there was a break
-    if (dt > 2/expected_cmd_frequency) {
-      pid_angular_velocity_->reset();
-      dt = 0;
-    }
-    double ez = msg->angular.z - angular_z_now;
-    cmd_vel_out.angular.z =  msg->angular.z + pid_angular_velocity_->update(ez, dt);
-  }
-  time_prev_ = time_now;
-
-  cmd_vel_pub_->publish(cmd_vel_out);
-
-#if DEBUG_MESSAGES
-  int_odom_msg_.twist.twist.angular.z = angular_z_now;
-  odom_int_pub_->publish(int_odom_msg_);
-  geometry_msgs::msg::Twist pid_state_msg;
-  pid_state_msg.linear.x = pid_angular_velocity_->integral_;
-  pid_state_msg.angular.x = pid_angular_velocity_->p_term_;
-  pid_state_msg.angular.y = pid_angular_velocity_->i_term_;
-  pid_state_msg.angular.z = pid_angular_velocity_->d_term_;
-  pid_state_pub_->publish(pid_state_msg);
 #endif
 }
 
@@ -261,15 +242,15 @@ rcl_interfaces::msg::SetParametersResult DriveOnHeadingWithPid<ActionT>::dynamic
     if (type == rclcpp::PARAMETER_DOUBLE) {
       const auto& value = parameter.as_double();
       if (name == "pid_control.kp") {
-        pid_angular_velocity_->setKp(value);
+        angular_velocity_pid_->setKp(value);
       } else if (name == "pid_control.ki") {
-        pid_angular_velocity_->setKi(value);
+        angular_velocity_pid_->setKi(value);
       } else if (name == "pid_control.kd") {
-        pid_angular_velocity_->setKd(value);
+        angular_velocity_pid_->setKd(value);
       } else if (name == "pid_control.integral_limit") {
-        pid_angular_velocity_->setIntegralLimit(value);
+        angular_velocity_pid_->setIntegralLimit(value);
       } else if (name == "pid_control.output_limit") {
-        pid_angular_velocity_->setOutputLimit(value);
+        angular_velocity_pid_->setOutputLimit(value);
       }
     } else if (type == rclcpp::PARAMETER_BOOL) {
       const auto& value = parameter.as_bool();
@@ -278,8 +259,8 @@ rcl_interfaces::msg::SetParametersResult DriveOnHeadingWithPid<ActionT>::dynamic
       }
     }
   }
-  pid_angular_velocity_->reset();
-  interpolate_angular_z_->reset();
+  angular_velocity_pid_->reset();
+  angular_velocity_extrapolator_->reset();
 
   return result;
 }

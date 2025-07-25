@@ -1,5 +1,5 @@
-#ifndef PID_CONTROLLER_HPP
-#define PID_CONTROLLER_HPP
+#ifndef NAV2_UTIL__PID_CONTROLLER_HPP
+#define NAV2_UTIL__PID_CONTROLLER_HPP
 
 #include <cmath>
 #include <algorithm>
@@ -80,4 +80,4 @@ public:
 
 }
 
-#endif  // PID_CONTROLLER_HPP
+#endif  // NAV2_UTIL__PID_CONTROLLER_HPP

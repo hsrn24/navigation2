@@ -6,7 +6,7 @@
 #include <utility>
 
 #include "nav2_util/pid_controller.hpp"
-#include "nav2_util/interpolate.hpp"
+#include "nav2_util/extrapolate.hpp"
 #include "nav2_behaviors/timed_behavior.hpp"
 #include "nav2_msgs/action/drive_on_heading.hpp"
 #include "nav2_msgs/action/back_up.hpp"
@@ -15,7 +15,7 @@
 #include <geometry_msgs/msg/twist.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 
-#define DEBUG_MESSAGES 1
+#define DEBUG_MESSAGES 0
 
 namespace nav2_behaviors
 {
@@ -37,8 +37,8 @@ public:
     command_x_(0.0),
     command_speed_(0.0),
     simulate_ahead_time_(0.0),
-    pid_angular_velocity_(std::make_shared<nav2_util::PidController>()),
-    interpolate_angular_z_(std::make_shared<nav2_util::Interpolate>())
+    angular_velocity_pid_(std::make_shared<nav2_util::PidController>()),
+    angular_velocity_extrapolator_(std::make_shared<nav2_util::LinearExtrapolator>())
   {}
 
   ~DriveOnHeadingWithPid() = default;
@@ -85,11 +85,6 @@ protected:
   double simulate_ahead_time_;
 
 private:
-  /**
-  * @brief Subscription callback routine
-  *
-  */
-  void cmdVelCb(const geometry_msgs::msg::Twist::UniquePtr msg);
 
   /**
    * @brief Dynamic reconfigure callback
@@ -99,14 +94,11 @@ private:
 
     std::vector<rclcpp::Parameter> parameters);
 
-  /// @brief Subscription of the cmd vel
-  rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
   /// @brief Subscription of the odometry filtered
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_filtered_sub_;
-  /// @brief Publisher of the cmd vel post slippage prevention
-  rclcpp_lifecycle::LifecyclePublisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
+
 #if DEBUG_MESSAGES
-  rclcpp_lifecycle::LifecyclePublisher<nav_msgs::msg::Odometry>::SharedPtr odom_int_pub_;
+  rclcpp_lifecycle::LifecyclePublisher<nav_msgs::msg::Odometry>::SharedPtr extrapolated_odom_pub_;
   rclcpp_lifecycle::LifecyclePublisher<geometry_msgs::msg::Twist>::SharedPtr pid_state_pub_;
 #endif
   /// @brief Handle to the dynamic parameters callback
@@ -117,12 +109,12 @@ private:
   bool pid_enabled_;
 
   // PID Controller implementations
-  std::shared_ptr<nav2_util::PidController> pid_angular_velocity_;
+  std::shared_ptr<nav2_util::PidController> angular_velocity_pid_;
 
   // Remembered state
-  std::shared_ptr<nav2_util::Interpolate> interpolate_angular_z_;
+  std::shared_ptr<nav2_util::LinearExtrapolator> angular_velocity_extrapolator_;
   rclcpp::Time time_prev_;
-  nav_msgs::msg::Odometry int_odom_msg_;
+  nav_msgs::msg::Odometry extrapolated_odom_msg_;
 
 };
 
