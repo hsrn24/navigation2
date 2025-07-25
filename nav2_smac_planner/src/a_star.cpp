@@ -121,8 +121,8 @@ void AStarAlgorithm<NodeT>::setCollisionChecker(GridCollisionChecker * collision
   if (getSizeX() != x_size || getSizeY() != y_size) {
     _x_size = x_size;
     _y_size = y_size;
-    NodeT::initMotionModel(_motion_model, _x_size, _y_size, _dim3_size, _search_info);
   }
+  NodeT::initMotionModel(_motion_model, _x_size, _y_size, _dim3_size, _search_info);
   _expander->setCollisionChecker(_collision_checker);
 }
 
@@ -312,9 +312,14 @@ bool AStarAlgorithm<NodeT>::areInputsValid()
   }
 
   // Check if points were filled in
-  if (!_start || _goal_manager.goalsIsEmpty()) {
-    throw std::runtime_error("Failed to compute path, no valid start or goal given.");
+  if (!_start) {
+    throw std::runtime_error("Failed to compute path, no valid start given.");
   }
+
+  if (_goal_manager.goalsIsEmpty()) {
+    throw std::runtime_error("Failed to compute path, no valid goal given.");
+  }
+
 
   // remove invalid goals
   _goal_manager.removeInvalidGoals(getToleranceHeuristic(), _collision_checker, _traverse_unknown);
@@ -346,8 +351,8 @@ bool AStarAlgorithm<NodeT>::createPath(
 
   #if VISUALIZE_PLANNER_EXPANSIONS
     // DEBUG: Create publisher for visualizing expansions
-    static auto planner_expansions_node = std::make_shared<rclcpp::Node>("planner_expansions");
-    static auto planner_expansions_pub = planner_expansions_node->create_publisher<geometry_msgs::msg::PoseArray>("planner_expansions", 1);
+    thread_local auto planner_expansions_node = std::make_shared<rclcpp::Node>("planner_expansions");
+    thread_local auto planner_expansions_pub = planner_expansions_node->create_publisher<geometry_msgs::msg::PoseArray>("planner_expansions", 1);
     geometry_msgs::msg::PoseArray planner_expansions_msg;
     geometry_msgs::msg::PoseArray recent_expansions_msg;
     geometry_msgs::msg::Pose planner_expansions_pose;

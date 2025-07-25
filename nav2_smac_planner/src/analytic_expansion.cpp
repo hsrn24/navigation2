@@ -64,7 +64,7 @@ typename AnalyticExpansion<NodeT>::NodePtr AnalyticExpansion<NodeT>::tryAnalytic
     NodePtr current_best_goal = nullptr;
     NodePtr current_best_node = nullptr;
     float current_best_score = std::numeric_limits<float>::max();
-
+  
     closest_distance = std::min(
       closest_distance,
       static_cast<int>(NodeT::getHeuristicCost(node_coords, goals_coords)));
@@ -171,7 +171,7 @@ typename AnalyticExpansion<NodeT>::AnalyticExpansionNodes AnalyticExpansion<Node
   const NodeGetter & node_getter,
   const ompl::base::StateSpacePtr & state_space)
 {
-  static ompl::base::ScopedState<> from(state_space), to(state_space), s(state_space);
+  thread_local ompl::base::ScopedState<> from(state_space), to(state_space), s(state_space);
   from[0] = node->pose.x;
   from[1] = node->pose.y;
   from[2] = node->motion_table.getAngleFromBin(node->pose.theta);

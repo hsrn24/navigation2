@@ -288,8 +288,8 @@ public:
 
   Node2D * parent;
   Coordinates pose;
-  static float cost_travel_multiplier;
-  static std::vector<int> _neighbors_grid_offsets;
+  thread_local static float cost_travel_multiplier;
+  thread_local static std::vector<int> _neighbors_grid_offsets;
 
 private:
   float _cell_cost;
