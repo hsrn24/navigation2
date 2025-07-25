@@ -34,7 +34,6 @@ using namespace std::chrono;  // NOLINT
 namespace nav2_smac_planner
 {
 
-// WE DO NOT WANT TO SHARE FOR MULTI THREAD APPS
 // defining static member for all instance to share
 thread_local LookupTable NodeHybrid::obstacle_heuristic_lookup_table;
 thread_local float NodeHybrid::travel_distance_cost = sqrtf(2.0f);

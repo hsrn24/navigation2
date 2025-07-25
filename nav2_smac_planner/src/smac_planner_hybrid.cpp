@@ -399,7 +399,6 @@ nav_msgs::msg::Path SmacPlannerHybrid::createPlan(
 
   if (_costmap_downsampler) {
     costmap = _costmap_downsampler->downsample(_downsampling_factor);
-    _collision_checker.setCostmap(costmap);
   }
 
   _collision_checker.setCostmap(costmap);
@@ -423,9 +422,6 @@ nav_msgs::msg::Path SmacPlannerHybrid::createPlan(
             "Start Coordinates of(" + std::to_string(start.pose.position.x) + ", " +
             std::to_string(start.pose.position.y) + ") was outside bounds");
   }
-
-  // Previously locked here
-  // lock.unlock();
 
   double orientation_bin = std::round(tf2::getYaw(start.pose.orientation) / _angle_bin_size);
   while (orientation_bin < 0.0) {
@@ -457,7 +453,6 @@ nav_msgs::msg::Path SmacPlannerHybrid::createPlan(
     orientation_bin -= static_cast<float>(_angle_quantizations);
   }
 
-  /// POSSIBLE issue here
   _a_star->setGoal(mx_goal, my_goal, static_cast<unsigned int>(orientation_bin),
     _goal_heading_mode, _coarse_search_resolution);
 
