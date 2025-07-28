@@ -23,6 +23,7 @@
 #include <string>
 #include <vector>
 #include <utility>
+#include <thread>
 
 #include "builtin_interfaces/msg/duration.hpp"
 #include "lifecycle_msgs/msg/state.hpp"
@@ -147,6 +148,15 @@ PlannerServer::on_configure(const rclcpp_lifecycle::State & /*state*/)
     std::chrono::milliseconds(500),
     true);
 
+  // Create the action servers for path planning to a pose and through poses
+  action_server_pose2_ = std::make_unique<ActionServerToPose>(
+    shared_from_this(),
+    "compute_path_to_pose2",
+    std::bind(&PlannerServer::computePlan2, this),
+    nullptr,
+    std::chrono::milliseconds(500),
+    true);
+
   action_server_poses_ = std::make_unique<ActionServerThroughPoses>(
     shared_from_this(),
     "compute_path_through_poses",
@@ -165,6 +175,7 @@ PlannerServer::on_activate(const rclcpp_lifecycle::State & /*state*/)
 
   plan_publisher_->on_activate();
   action_server_pose_->activate();
+  action_server_pose2_->activate();
   action_server_poses_->activate();
   costmap_ros_->activate();
 
@@ -197,6 +208,7 @@ PlannerServer::on_deactivate(const rclcpp_lifecycle::State & /*state*/)
   RCLCPP_INFO(get_logger(), "Deactivating");
 
   action_server_pose_->deactivate();
+  action_server_pose2_->deactivate();
   action_server_poses_->deactivate();
   plan_publisher_->on_deactivate();
 
@@ -228,6 +240,7 @@ PlannerServer::on_cleanup(const rclcpp_lifecycle::State & /*state*/)
   RCLCPP_INFO(get_logger(), "Cleaning up");
 
   action_server_pose_.reset();
+  action_server_pose2_.reset();
   action_server_poses_.reset();
   plan_publisher_.reset();
   tf_.reset();
@@ -358,7 +371,7 @@ bool PlannerServer::validatePath(
 void
 PlannerServer::computePlanThroughPoses()
 {
-  std::lock_guard<std::mutex> lock(dynamic_params_lock_);
+  std::shared_lock<std::shared_mutex> lock(dynamic_params_lock_);
 
   auto start_time = this->now();
 
@@ -450,14 +463,13 @@ PlannerServer::computePlanThroughPoses()
 void
 PlannerServer::computePlan()
 {
-  std::lock_guard<std::mutex> lock(dynamic_params_lock_);
+  std::shared_lock<std::shared_mutex>  lock(dynamic_params_lock_);
 
   auto start_time = this->now();
 
   // Initialize the ComputePathToPose goal and result
   auto goal = action_server_pose_->get_current_goal();
   auto result = std::make_shared<ActionToPose::Result>();
-
   try {
     if (isServerInactive(action_server_pose_) || isCancelRequested(action_server_pose_)) {
       return;
@@ -508,13 +520,75 @@ PlannerServer::computePlan()
   }
 }
 
+void
+PlannerServer::computePlan2()
+{
+  std::shared_lock<std::shared_mutex>  lock(dynamic_params_lock_);
+
+  auto start_time = this->now();
+
+  // Initialize the ComputePathToPose goal and result
+  auto goal = action_server_pose2_->get_current_goal();
+  auto result = std::make_shared<ActionToPose::Result>();
+
+  try {
+    if (isServerInactive(action_server_pose2_) || isCancelRequested(action_server_pose2_)) {
+      return;
+    }
+
+    waitForCostmap();
+
+    getPreemptedGoalIfRequested(action_server_pose2_, goal);
+
+
+    // Use start pose if provided otherwise use current robot pose
+    geometry_msgs::msg::PoseStamped start;
+    if (!getStartPose(action_server_pose2_, goal, start)) {
+      return;
+    }
+
+    // Transform them into the global frame
+    geometry_msgs::msg::PoseStamped goal_pose = goal->goal;
+    if (!transformPosesToGlobalFrame(action_server_pose2_, start, goal_pose)) {
+      return;
+    }  
+
+    result->path = getPlan(start, goal_pose, goal->planner_id); 
+
+    if (!validatePath(action_server_pose2_, goal_pose, result->path, goal->planner_id)) {
+      return;
+    }
+
+    // Publish the plan for visualization purposes
+    publishPlan(result->path);
+
+    auto cycle_duration = this->now() - start_time;
+    result->planning_time = cycle_duration;
+
+    if (max_planner_duration_ && cycle_duration.seconds() > max_planner_duration_) {
+      RCLCPP_WARN(
+        get_logger(),
+        "Planner loop missed its desired rate of %.4f Hz. Current loop rate is %.4f Hz",
+        1 / max_planner_duration_, 1 / cycle_duration.seconds());
+    }
+
+    action_server_pose2_->succeeded_current(result);
+  } catch (std::exception & ex) {
+    RCLCPP_WARN(
+      get_logger(), "%s plugin failed to plan calculation to (%.2f, %.2f): \"%s\"",
+      goal->planner_id.c_str(), goal->goal.pose.position.x,
+      goal->goal.pose.position.y, ex.what());
+    action_server_pose2_->terminate_current();
+  }
+}
+
 nav_msgs::msg::Path
 PlannerServer::getPlan(
   const geometry_msgs::msg::PoseStamped & start,
   const geometry_msgs::msg::PoseStamped & goal,
   const std::string & planner_id)
 {
-  RCLCPP_DEBUG(
+  RCLCPP_INFO(
     get_logger(), "Attempting to a find path from (%.2f, %.2f) to "
     "(%.2f, %.2f).", start.pose.position.x, start.pose.position.y,
     goal.pose.position.x, goal.pose.position.y);
@@ -603,7 +677,7 @@ void PlannerServer::isPathValid(
 rcl_interfaces::msg::SetParametersResult
 PlannerServer::dynamicParametersCallback(std::vector<rclcpp::Parameter> parameters)
 {
-  std::lock_guard<std::mutex> lock(dynamic_params_lock_);
+  std::unique_lock<std::shared_mutex> lock(dynamic_params_lock_);
   rcl_interfaces::msg::SetParametersResult result;
 
   for (auto parameter : parameters) {

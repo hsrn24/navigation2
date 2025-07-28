@@ -424,10 +424,10 @@ public:
 
   NodeLattice * parent;
   Coordinates pose;
-  static LatticeMotionTable motion_table;
+  thread_local static LatticeMotionTable motion_table;
   // Dubin / Reeds-Shepp lookup and size for dereferencing
-  static LookupTable dist_heuristic_lookup_table;
-  static float size_lookup;
+  thread_local static LookupTable dist_heuristic_lookup_table;
+  thread_local static float size_lookup;
 
 private:
   float _cell_cost;
