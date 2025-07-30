@@ -138,6 +138,7 @@ PlannerServer::on_configure(const rclcpp_lifecycle::State & /*state*/)
 
   // Initialize pubs & subs
   plan_publisher_ = create_publisher<nav_msgs::msg::Path>("plan", 1);
+  plan_publisher2_ = create_publisher<nav_msgs::msg::Path>("plan2",2);
 
   // Create the action servers for path planning to a pose and through poses
   action_server_pose_ = std::make_unique<ActionServerToPose>(
@@ -174,6 +175,7 @@ PlannerServer::on_activate(const rclcpp_lifecycle::State & /*state*/)
   RCLCPP_INFO(get_logger(), "Activating");
 
   plan_publisher_->on_activate();
+  plan_publisher2_->on_activate();
   action_server_pose_->activate();
   action_server_pose2_->activate();
   action_server_poses_->activate();
@@ -211,6 +213,7 @@ PlannerServer::on_deactivate(const rclcpp_lifecycle::State & /*state*/)
   action_server_pose2_->deactivate();
   action_server_poses_->deactivate();
   plan_publisher_->on_deactivate();
+  plan_publisher2_->on_deactivate();
 
   /*
    * The costmap is also a lifecycle node, so it may have already fired on_deactivate
@@ -243,6 +246,7 @@ PlannerServer::on_cleanup(const rclcpp_lifecycle::State & /*state*/)
   action_server_pose2_.reset();
   action_server_poses_.reset();
   plan_publisher_.reset();
+  plan_publisher2_.reset();
   tf_.reset();
 
   costmap_ros_->cleanup();
@@ -619,6 +623,15 @@ PlannerServer::publishPlan(const nav_msgs::msg::Path & path)
   auto msg = std::make_unique<nav_msgs::msg::Path>(path);
   if (plan_publisher_->is_activated() && plan_publisher_->get_subscription_count() > 0) {
     plan_publisher_->publish(std::move(msg));
+  }
+}
+
+void
+PlannerServer::publishPlan2(const nav_msgs::msg::Path & path)
+{
+  auto msg = std::make_unique<nav_msgs::msg::Path>(path);
+  if (plan_publisher2_->is_activated() && plan_publisher2_->get_subscription_count() > 0) {
+    plan_publisher2_->publish(std::move(msg));
   }
 }
 

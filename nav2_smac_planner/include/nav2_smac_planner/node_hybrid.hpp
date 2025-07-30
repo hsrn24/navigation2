@@ -24,6 +24,7 @@
 #include <memory>
 #include <utility>
 #include <limits>
+#include <rclcpp/rclcpp.hpp>
 
 #include "ompl/base/StateSpace.h"
 
@@ -486,7 +487,8 @@ public:
 
   thread_local static std::shared_ptr<nav2_costmap_2d::Costmap2DROS> costmap_ros;
   // Dubin / Reeds-Shepp lookup and size for dereferencing
-  thread_local static LookupTable dist_heuristic_lookup_table;
+  static LookupTable dist_heuristic_lookup_table;
+  static std::mutex dist_heuristic_lookup_table_mutex;
   thread_local static float size_lookup;
 
 private:
