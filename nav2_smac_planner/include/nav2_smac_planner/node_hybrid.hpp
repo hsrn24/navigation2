@@ -24,6 +24,7 @@
 #include <memory>
 #include <utility>
 #include <limits>
+#include <rclcpp/rclcpp.hpp>
 
 #include "ompl/base/StateSpace.h"
 
@@ -478,16 +479,17 @@ public:
   Coordinates pose;
 
   // Constants required across all nodes but don't want to allocate more than once
-  static float travel_distance_cost;
-  static HybridMotionTable motion_table;
+  thread_local static float travel_distance_cost;
+  thread_local static HybridMotionTable motion_table;
   // Wavefront lookup and queue for continuing to expand as needed
-  static LookupTable obstacle_heuristic_lookup_table;
-  static ObstacleHeuristicQueue obstacle_heuristic_queue;
+  thread_local static LookupTable obstacle_heuristic_lookup_table;
+  thread_local static ObstacleHeuristicQueue obstacle_heuristic_queue;
 
-  static std::shared_ptr<nav2_costmap_2d::Costmap2DROS> costmap_ros;
+  thread_local static std::shared_ptr<nav2_costmap_2d::Costmap2DROS> costmap_ros;
   // Dubin / Reeds-Shepp lookup and size for dereferencing
   static LookupTable dist_heuristic_lookup_table;
-  static float size_lookup;
+  static std::mutex dist_heuristic_lookup_table_mutex;
+  thread_local static float size_lookup;
 
 private:
   float _cell_cost;

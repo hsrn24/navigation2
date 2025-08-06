@@ -20,7 +20,7 @@
 #include <memory>
 #include <vector>
 #include <unordered_map>
-#include <mutex>
+#include <shared_mutex>
 
 #include "geometry_msgs/msg/point.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
@@ -187,6 +187,7 @@ protected:
 
   // Our action server implements the ComputePathToPose action
   std::unique_ptr<ActionServerToPose> action_server_pose_;
+  std::unique_ptr<ActionServerToPose> action_server_pose2_;
   std::unique_ptr<ActionServerThroughPoses> action_server_poses_;
 
   /**
@@ -194,6 +195,13 @@ protected:
    * ComputePathToPose
    */
   void computePlan();
+
+  /**
+   * @brief The action server callback which calls planner to get the path
+   * ComputePathToPose
+   */
+  void computePlan2();
+  
 
   /**
    * @brief The action server callback which calls planner to get the path
@@ -216,6 +224,7 @@ protected:
    */
   void publishPlan(const nav_msgs::msg::Path & path);
 
+  void publishPlan2(const nav_msgs::msg::Path & path);
   /**
    * @brief Callback executed when a parameter change is detected
    * @param event ParameterEvent message
@@ -225,7 +234,7 @@ protected:
 
   // Dynamic parameters handler
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr dyn_params_handler_;
-  std::mutex dynamic_params_lock_;
+  std::shared_mutex dynamic_params_lock_;
 
   // Planner
   PlannerMap planners_;
@@ -247,6 +256,7 @@ protected:
 
   // Publishers for the path
   rclcpp_lifecycle::LifecyclePublisher<nav_msgs::msg::Path>::SharedPtr plan_publisher_;
+  rclcpp_lifecycle::LifecyclePublisher<nav_msgs::msg::Path>::SharedPtr plan_publisher2_;
 
   // Service to deterime if the path is valid
   rclcpp::Service<nav2_msgs::srv::IsPathValid>::SharedPtr is_path_valid_service_;

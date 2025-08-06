@@ -22,7 +22,7 @@
 #include <queue>
 #include <limits>
 #include <utility>
-
+#include <mutex>
 #include "ompl/base/ScopedState.h"
 #include "ompl/base/spaces/DubinsStateSpace.h"
 #include "ompl/base/spaces/ReedsSheppStateSpace.h"
@@ -35,14 +35,14 @@ namespace nav2_smac_planner
 {
 
 // defining static member for all instance to share
-LookupTable NodeHybrid::obstacle_heuristic_lookup_table;
-float NodeHybrid::travel_distance_cost = sqrtf(2.0f);
-HybridMotionTable NodeHybrid::motion_table;
-float NodeHybrid::size_lookup = 25;
+thread_local LookupTable NodeHybrid::obstacle_heuristic_lookup_table;
+thread_local float NodeHybrid::travel_distance_cost = sqrtf(2.0f);
+thread_local HybridMotionTable NodeHybrid::motion_table;
+thread_local float NodeHybrid::size_lookup = 25;
 LookupTable NodeHybrid::dist_heuristic_lookup_table;
-std::shared_ptr<nav2_costmap_2d::Costmap2DROS> NodeHybrid::costmap_ros = nullptr;
-
-ObstacleHeuristicQueue NodeHybrid::obstacle_heuristic_queue;
+std::mutex NodeHybrid::dist_heuristic_lookup_table_mutex;
+thread_local std::shared_ptr<nav2_costmap_2d::Costmap2DROS> NodeHybrid::costmap_ros = nullptr;
+thread_local ObstacleHeuristicQueue NodeHybrid::obstacle_heuristic_queue;
 
 // Each of these tables are the projected motion models through
 // time and space applied to the search on the current node in
@@ -771,11 +771,13 @@ float NodeHybrid::getDistanceHeuristic(
       x_pos * ceiling_size * motion_table.num_angle_quantization +
       y_pos * motion_table.num_angle_quantization +
       theta_pos;
+    std::unique_lock<std::mutex> lock(dist_heuristic_lookup_table_mutex, std::try_to_lock);
     motion_heuristic = dist_heuristic_lookup_table[index];
+    lock.unlock();
   } else if (obstacle_heuristic <= 0.0) {
     // If no obstacle heuristic value, must have some H to use
     // In nominal situations, this should never be called.
-    static ompl::base::ScopedState<> from(motion_table.state_space), to(motion_table.state_space);
+    thread_local ompl::base::ScopedState<> from(motion_table.state_space), to(motion_table.state_space);
     to[0] = goal_coords.x;
     to[1] = goal_coords.y;
     to[2] = goal_coords.theta * motion_table.num_angle_quantization;
@@ -822,6 +824,7 @@ void NodeHybrid::precomputeDistanceHeuristic(
   // Heuristic space, we need to only store 2 of the 4 quadrants and simply mirror
   // around the X axis any relative node lookup. This reduces memory overhead and increases
   // the size of a window a platform can store in memory.
+  std::unique_lock<std::mutex> lock(dist_heuristic_lookup_table_mutex, std::try_to_lock);
   dist_heuristic_lookup_table.resize(size_lookup * ceil(size_lookup / 2.0) * dim_3_size_int);
   for (float x = ceil(-size_lookup / 2.0); x <= floor(size_lookup / 2.0); x += 1.0) {
     for (float y = 0.0; y <= floor(size_lookup / 2.0); y += 1.0) {
