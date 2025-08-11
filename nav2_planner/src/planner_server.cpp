@@ -564,7 +564,7 @@ PlannerServer::computePlan2()
     }
 
     // Publish the plan for visualization purposes
-    publishPlan(result->path);
+    publishPlan2(result->path);
 
     auto cycle_duration = this->now() - start_time;
     result->planning_time = cycle_duration;
