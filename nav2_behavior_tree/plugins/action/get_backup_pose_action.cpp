@@ -15,13 +15,13 @@ GetBackupPoseAction::GetBackupPoseAction(
   const BT::NodeConfiguration & conf)
 : BT::ActionNodeBase(name, conf),
   transform_tolerance_(0.1),
-  min_distance_(0.0),
-  resolution_(0.1),
+  backup_distance_(0.0),
+  dist_threshold_(0.1),
   global_frame_("map"),
   robot_frame_("base_link")
 {
-  getInput("min_distance", min_distance_);
-  getInput("resolution", resolution_);
+  getInput("backup_distance", backup_distance_);
+  getInput("dist_threshold", dist_threshold_);
   getInput("global_frame", global_frame_);
   getInput("robot_frame", robot_frame_);
   node_ = config().blackboard->get<rclcpp::Node::SharedPtr>("node");
@@ -42,20 +42,20 @@ inline BT::NodeStatus GetBackupPoseAction::tick()
     return BT::NodeStatus::FAILURE;
   }
 
-  // Continue ticking until the distance exceeds predefined resolution
-  if (nav2_util::geometry_utils::euclidean_distance(current_pose, previous_pose_) < resolution_) {
+  // Continue ticking until the distance exceeds predefined dist_threshold
+  if (nav2_util::geometry_utils::euclidean_distance(current_pose, previous_pose_) < dist_threshold_) {
     return BT::NodeStatus::SUCCESS;  // Let the BT run unaffected
   }
 
-  // Find backup pose within distance +/- resolution and forget outdated ones
+  // Find backup pose within distance +/- dist_threshold and forget outdated ones
   for (auto it_pose = previous_poses_.begin(); it_pose != previous_poses_.end(); ) {
     double it_distance = nav2_util::geometry_utils::euclidean_distance(current_pose, *it_pose);
-    if (it_distance >= min_distance_ - resolution_ && it_distance <= min_distance_ + resolution_) {
+    if (it_distance >= backup_distance_ - dist_threshold_ && it_distance <= backup_distance_ + dist_threshold_) {
       setOutput("output_pose", *it_pose);
       publishPose(*it_pose);
       previous_poses_.erase(it_pose);
       break;
-    } else if (it_distance > min_distance_ + resolution_) {
+    } else if (it_distance > backup_distance_ + dist_threshold_) {
       it_pose = previous_poses_.erase(it_pose);
     } else {
       it_pose++;

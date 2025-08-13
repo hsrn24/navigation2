@@ -29,9 +29,9 @@ public:
   static BT::PortsList providedPorts()
   {
     return {
-      BT::OutputPort<geometry_msgs::msg::PoseStamped>("output_pose", "Current robot pose"),
-      BT::InputPort<double>("min_distance", 0.0, "Minimum distance from current pose to consider"),
-      BT::InputPort<double>("resolution", 0.1, "How often to check for a new backup pose"),
+      BT::OutputPort<geometry_msgs::msg::PoseStamped>("output_pose", "Previous robot pose (backup_distance behind)"),
+      BT::InputPort<double>("backup_distance", 0.0, "Minimum distance from current pose to consider"),
+      BT::InputPort<double>("dist_threshold", 0.1, "How often to check for a new backup pose"),
       BT::InputPort<std::string>("global_frame", std::string("map"), "Global frame"),
       BT::InputPort<std::string>("robot_frame", std::string("base_link"), "Robot base frame")
     };
@@ -45,7 +45,7 @@ private:
   rclcpp::Node::SharedPtr node_;
   std::shared_ptr<tf2_ros::Buffer> tf_;
   double transform_tolerance_;
-  double min_distance_, resolution_;
+  double backup_distance_, dist_threshold_;
   std::string global_frame_, robot_frame_;
   std::vector<geometry_msgs::msg::PoseStamped> previous_poses_;
   geometry_msgs::msg::PoseStamped previous_pose_;
