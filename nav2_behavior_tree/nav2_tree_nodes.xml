@@ -221,7 +221,7 @@
       <input_port name="server_timeout">Server timeout</input_port>
     </Action>
 
-    <Action ID="GetCurrentPose">
+    <Action ID="GetBackupPose">
       <output_port name="output_pose">Current robot pose</output_port>
       <input_port name="min_distance">Minimum distance from current pose to consider</input_port>
       <input_port name="resolution">How often to check for a new backup pose</input_port>

@@ -1,5 +1,5 @@
-#ifndef NAV2_BEHAVIOR_TREE__PLUGINS__ACTION__GET_CURRENT_POSE_ACTION_HPP_
-#define NAV2_BEHAVIOR_TREE__PLUGINS__ACTION__GET_CURRENT_POSE_ACTION_HPP_
+#ifndef NAV2_BEHAVIOR_TREE__PLUGINS__ACTION__GET_BACKUP_POSE_ACTION_HPP_
+#define NAV2_BEHAVIOR_TREE__PLUGINS__ACTION__GET_BACKUP_POSE_ACTION_HPP_
 
 #include <vector>
 #include <memory>
@@ -15,10 +15,10 @@
 namespace nav2_behavior_tree
 {
 
-class GetCurrentPoseAction : public BT::ActionNodeBase
+class GetBackupPoseAction : public BT::ActionNodeBase
 {
 public:
-  GetCurrentPoseAction(
+  GetBackupPoseAction(
     const std::string & xml_tag_name,
     const BT::NodeConfiguration & conf);
 
@@ -54,4 +54,4 @@ private:
 
 }  // namespace nav2_behavior_tree
 
-#endif  // NAV2_BEHAVIOR_TREE__PLUGINS__ACTION__GET_CURRENT_POSE_ACTION_HPP_
+#endif  // NAV2_BEHAVIOR_TREE__PLUGINS__ACTION__GET_BACKUP_POSE_ACTION_HPP_

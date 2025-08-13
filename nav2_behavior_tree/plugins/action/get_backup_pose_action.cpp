@@ -5,12 +5,12 @@
 #include "nav_msgs/msg/path.hpp"
 #include "nav2_util/geometry_utils.hpp"
 
-#include "nav2_behavior_tree/plugins/action/get_current_pose_action.hpp"
+#include "nav2_behavior_tree/plugins/action/get_backup_pose_action.hpp"
 
 namespace nav2_behavior_tree
 {
 
-GetCurrentPoseAction::GetCurrentPoseAction(
+GetBackupPoseAction::GetBackupPoseAction(
   const std::string & name,
   const BT::NodeConfiguration & conf)
 : BT::ActionNodeBase(name, conf),
@@ -30,7 +30,7 @@ GetCurrentPoseAction::GetCurrentPoseAction(
   pose_publisher_ = node_->create_publisher<geometry_msgs::msg::PoseStamped>("backup_pose", 1);
 }
 
-inline BT::NodeStatus GetCurrentPoseAction::tick()
+inline BT::NodeStatus GetBackupPoseAction::tick()
 {
   // Get current pose
   geometry_msgs::msg::PoseStamped current_pose;
@@ -46,21 +46,17 @@ inline BT::NodeStatus GetCurrentPoseAction::tick()
   if (nav2_util::geometry_utils::euclidean_distance(current_pose, previous_pose_) < resolution_) {
     return BT::NodeStatus::SUCCESS;  // Let the BT run unaffected
   }
-  RCLCPP_WARN_STREAM(node_->get_logger(), ">> Robot moved " << nav2_util::geometry_utils::euclidean_distance(current_pose, previous_pose_) << " from previous_pose");
 
   // Find backup pose within distance +/- resolution and forget outdated ones
   for (auto it_pose = previous_poses_.begin(); it_pose != previous_poses_.end(); ) {
     double it_distance = nav2_util::geometry_utils::euclidean_distance(current_pose, *it_pose);
-    RCLCPP_WARN_STREAM(node_->get_logger(), ">>>>>> it_distance: " << it_distance);
     if (it_distance >= min_distance_ - resolution_ && it_distance <= min_distance_ + resolution_) {
       setOutput("output_pose", *it_pose);
       publishPose(*it_pose);
       previous_poses_.erase(it_pose);
-      RCLCPP_WARN_STREAM(node_->get_logger(), ">>>>>>>>>>>> backup pose found!");
       break;
     } else if (it_distance > min_distance_ + resolution_) {
       it_pose = previous_poses_.erase(it_pose);
-      RCLCPP_WARN_STREAM(node_->get_logger(), ">>>>>>>>>>>> it_pose erased!");
     } else {
       it_pose++;
     }
@@ -68,7 +64,6 @@ inline BT::NodeStatus GetCurrentPoseAction::tick()
 
   // Reset condition: use current pose if there's nothing within reach
   if (previous_poses_.size() == 0) {
-      RCLCPP_WARN_STREAM(node_->get_logger(), >> "No valid backup pose found, resetting to current one!");
       setOutput("output_pose", current_pose);
       publishPose(current_pose);
   }
@@ -80,7 +75,7 @@ inline BT::NodeStatus GetCurrentPoseAction::tick()
   return BT::NodeStatus::SUCCESS;
 }
 
-void GetCurrentPoseAction::publishPose(const geometry_msgs::msg::PoseStamped & pose)
+void GetBackupPoseAction::publishPose(const geometry_msgs::msg::PoseStamped & pose)
 {
   auto msg = std::make_unique<geometry_msgs::msg::PoseStamped>(pose);
   if (pose_publisher_->get_subscription_count() > 0) {
@@ -94,5 +89,5 @@ void GetCurrentPoseAction::publishPose(const geometry_msgs::msg::PoseStamped & p
 #include "behaviortree_cpp_v3/bt_factory.h"
 BT_REGISTER_NODES(factory)
 {
-  factory.registerNodeType<nav2_behavior_tree::GetCurrentPoseAction>("GetCurrentPose");
+  factory.registerNodeType<nav2_behavior_tree::GetBackupPoseAction>("GetBackupPose");
 }
