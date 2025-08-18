@@ -305,6 +305,10 @@
       <input_port name="robot_base_frame">Robot base frame</input_port>
     </Decorator>
 
+    <Decorator ID="TimeoutController">
+      <input_port name="timeout">Time to raport failure</input_port>
+    </Decorator>
+
     <Decorator ID="SingleTrigger">
     </Decorator>
 
