@@ -65,6 +65,11 @@ private:
   BT::NodeStatus tick() override;
 
   /**
+   * @brief The other override required by a BT action.
+   */
+  void halt() override {}
+
+  /**
    * @brief Publishes output pose as a PoseStamped message
    * 
    * @param pose 
