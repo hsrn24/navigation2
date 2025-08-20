@@ -221,6 +221,14 @@
       <input_port name="server_timeout">Server timeout</input_port>
     </Action>
 
+    <Action ID="GetBackupPose">
+      <output_port name="output_pose">A previous robot pose in a backup_distance behind current position</output_port>
+      <input_port name="backup_distance">Distance of the backup pose behind the robot</input_port>
+      <input_port name="dist_threshold">How often to check for a new backup pose</input_port>
+      <input_port name="global_frame">Reference frame to check in</input_port>
+      <input_port name="robot_frame">Robot frame to check relative to global_frame</input_port>
+    </Action>
+
     <!-- ############################### CONDITION NODES ############################## -->
     <Condition ID="GoalReached">
         <input_port name="goal">Destination</input_port>
@@ -295,6 +303,10 @@
       <input_port name="distance">Distance</input_port>
       <input_port name="global_frame">Reference frame</input_port>
       <input_port name="robot_base_frame">Robot base frame</input_port>
+    </Decorator>
+
+    <Decorator ID="TimeoutController">
+      <input_port name="timeout">Time in seconds to return FAILURE if the child keeps on RUNNING</input_port>
     </Decorator>
 
     <Decorator ID="SingleTrigger">

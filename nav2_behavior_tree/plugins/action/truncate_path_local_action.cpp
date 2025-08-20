@@ -67,7 +67,7 @@ inline BT::NodeStatus TruncatePathLocal::tick()
 
   if (path_.poses.empty()) {
     setOutput("output_path", path_);
-    setOutput("last_path_pose", path_.poses.back());
+    setOutput("last_path_pose", pose);
     return BT::NodeStatus::SUCCESS;
   }
 

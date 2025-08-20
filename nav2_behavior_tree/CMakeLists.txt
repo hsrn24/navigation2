@@ -159,6 +159,9 @@ list(APPEND plugin_libs nav2_distance_controller_bt_node)
 add_library(nav2_speed_controller_bt_node SHARED plugins/decorator/speed_controller.cpp)
 list(APPEND plugin_libs nav2_speed_controller_bt_node)
 
+add_library(nav2_timeout_controller_bt_node SHARED plugins/decorator/timeout_controller.cpp)
+list(APPEND plugin_libs nav2_timeout_controller_bt_node)
+
 add_library(nav2_truncate_path_action_bt_node SHARED plugins/action/truncate_path_action.cpp)
 list(APPEND plugin_libs nav2_truncate_path_action_bt_node)
 
@@ -185,6 +188,9 @@ list(APPEND plugin_libs nav2_remove_passed_goals_action_bt_node)
 
 add_library(nav2_get_pose_from_path_action_bt_node SHARED plugins/action/get_pose_from_path_action.cpp)
 list(APPEND plugin_libs nav2_get_pose_from_path_action_bt_node)
+
+add_library(nav2_get_backup_pose_action_bt_node SHARED plugins/action/get_backup_pose_action.cpp)
+list(APPEND plugin_libs nav2_get_backup_pose_action_bt_node)
 
 add_library(nav2_pipeline_sequence_bt_node SHARED plugins/control/pipeline_sequence.cpp)
 list(APPEND plugin_libs nav2_pipeline_sequence_bt_node)
