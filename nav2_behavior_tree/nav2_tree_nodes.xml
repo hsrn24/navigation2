@@ -222,8 +222,8 @@
     </Action>
 
     <Action ID="GetBackupPose">
-      <output_port name="output_pose">Previous robot pose (backup_distance behind)</output_port>
-      <input_port name="backup_distance">Minimum distance from current pose to consider</input_port>
+      <output_port name="output_pose">A previous robot pose in a backup_distance behind current position</output_port>
+      <input_port name="backup_distance">Distance of the backup pose behind the robot</input_port>
       <input_port name="dist_threshold">How often to check for a new backup pose</input_port>
       <input_port name="global_frame">Reference frame to check in</input_port>
       <input_port name="robot_frame">Robot frame to check relative to global_frame</input_port>
@@ -306,7 +306,7 @@
     </Decorator>
 
     <Decorator ID="TimeoutController">
-      <input_port name="timeout">Time to raport failure</input_port>
+      <input_port name="timeout">Time in seconds to return FAILURE if the child keeps on RUNNING</input_port>
     </Decorator>
 
     <Decorator ID="SingleTrigger">

@@ -15,9 +15,29 @@
 namespace nav2_behavior_tree
 {
 
+/**
+ * @brief A BT::ActionNode that remembers previous poses of the robot.
+ * If the robot travels more than the backup_distance, it outputs a pose
+ * closest to this distance (+/- dist_threshold).
+ * 
+ * The node is activated every dist_threshold meters, so this parameter
+ * denotes both the granularity of consecutive backup poses as well as
+ * accuracy in keeping the backup_distance.
+ * 
+ * If there's no remembered pose within backup_distance that could be used later,
+ * it outputs current pose as initial condition. The poses outside this distance
+ * get erased from the memory.
+ * 
+ * Returns BT::NodeStatus::SUCCESS all the time, unless internal FAILURE happens.
+ */
 class GetBackupPoseAction : public BT::ActionNodeBase
 {
 public:
+  /**
+   * @brief A constructor for nav2_behavior_tree::GetBackupPoseAction
+   * @param xml_tag_name Name for the XML tag for this node
+   * @param conf BT node configuration
+   */
   GetBackupPoseAction(
     const std::string & xml_tag_name,
     const BT::NodeConfiguration & conf);
@@ -29,8 +49,8 @@ public:
   static BT::PortsList providedPorts()
   {
     return {
-      BT::OutputPort<geometry_msgs::msg::PoseStamped>("output_pose", "Previous robot pose (backup_distance behind)"),
-      BT::InputPort<double>("backup_distance", 0.0, "Minimum distance from current pose to consider"),
+      BT::OutputPort<geometry_msgs::msg::PoseStamped>("output_pose", "A previous robot pose in a backup_distance behind current position"),
+      BT::InputPort<double>("backup_distance", 0.0, "Distance of the backup pose behind the robot"),
       BT::InputPort<double>("dist_threshold", 0.1, "How often to check for a new backup pose"),
       BT::InputPort<std::string>("global_frame", std::string("map"), "Global frame"),
       BT::InputPort<std::string>("robot_frame", std::string("base_link"), "Robot base frame")
@@ -38,8 +58,17 @@ public:
   }
 
 private:
-  void halt() override {}
+  /**
+   * @brief The main override required by a BT action
+   * @return BT::NodeStatus Status of tick execution
+   */
   BT::NodeStatus tick() override;
+
+  /**
+   * @brief Publishes output pose as a PoseStamped message
+   * 
+   * @param pose 
+   */
   void publishPose(const geometry_msgs::msg::PoseStamped & pose);
 
   rclcpp::Node::SharedPtr node_;

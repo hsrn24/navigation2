@@ -30,8 +30,8 @@ BT::NodeStatus TimeoutController::tick()
   auto elapsed = node_->now() - start_time_;
   if (elapsed.seconds() > timeout_) {
     timer_started_ = false;
+    RCLCPP_WARN_STREAM(node_->get_logger(), "Timeout elapsed, TimeoutController returning FAILURE!");
     return BT::NodeStatus::FAILURE;
-    RCLCPP_WARN_STREAM(node_->get_logger(), "Timeout elapsed, failing the BT!");
   }
 
   BT::NodeStatus child_state = child_node_->executeTick();
